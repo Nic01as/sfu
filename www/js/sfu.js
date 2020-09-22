@@ -8,14 +8,10 @@ const href = new URL(window.location.href);
 const roomId = href.searchParams.get("roomId");
 //Get name
 const name = href.searchParams.get("name");
-//Get key
-const key = href.searchParams.get("key");
 //Get video
 const nopublish = href.searchParams.has("nopublish");
 //Get ws url from navigaro url
 const url = "wss://"+href.host;
-//Check support for insertabe media streams
-const supportsInsertableStreams = !!RTCRtpSender.prototype.createEncodedVideoStreams;
 
 if (href.searchParams.has ("video"))
 	switch (href.searchParams.get ("video").toLowerCase ())
@@ -118,93 +114,23 @@ function addLocalVideoForStream(stream,muted)
 	container.appendChild(video);
 }
 
-/*
- Get some key material to use as input to the deriveKey method.
- The key material is a secret key supplied by the user.
- */
-async function getRoomKey(roomId,secret) 
+async function getRoomKey(roomId) 
 {
-	const enc = new TextEncoder();
-	const keyMaterial = await window.crypto.subtle.importKey(
-		"raw",
-		enc.encode(secret),
-		{name: "PBKDF2"},
-		false,
-		["deriveBits", "deriveKey"]
-	);
-	return window.crypto.subtle.deriveKey(
-		{
-			name: "PBKDF2",
-			salt: enc.encode(roomId),
-			iterations: 100000,
-			hash: "SHA-256"
-		},
-		keyMaterial,
-		{"name": "AES-GCM", "length": 256},
-		true,
-		["encrypt", "decrypt"]
-	);
+	return roomId;
 }
 
   /*
    * 
    */
-async function connect(url,roomId,name,secret) 
+async function connect(url,roomId,name) 
 {
 	let counter = 0;
-	const roomKey = await getRoomKey(roomId,secret);
-	async function encrypt(chunk, controller) {
-		try {
-			//Get iv
-			const iv = new ArrayBuffer(4);
-			//Create view, inc counter and set it
-			new DataView(iv).setUint32(0,counter <65535 ? counter++ : counter=0);
-			//Encrypt
-			const ciphertext = await window.crypto.subtle.encrypt(
-				{
-					name: "AES-GCM",
-					iv: iv
-				},
-				roomKey,
-				chunk.data
-			);
-			//Set chunk data
-			chunk.data = new ArrayBuffer(ciphertext.byteLength + 4);
-			//Crate new encoded data and allocate size for iv
-			const data = new Uint8Array(chunk.data);
-			//Copy iv
-			data.set(new Uint8Array(iv),0);
-			//Copy cipher
-			data.set(new Uint8Array(ciphertext),4);
-			//Write
-			controller.enqueue(chunk);
-		} catch(e) {
-		}
-	}
-
-	async function decrypt(chunk, controller) {
-		try {
-			//decrypt
-			chunk.data =  await window.crypto.subtle.decrypt(
-				{
-				  name: "AES-GCM",
-				  iv: new Uint8Array(chunk.data,0,4)
-				},
-				roomKey,
-				new Uint8Array(chunk.data,4,chunk.data.byteLength - 4)
-			);
-			//Write
-			controller.enqueue(chunk);
-		} catch(e) {
-		}
-	}
-	
-	const isCryptoEnabled = !!secret && supportsInsertableStreams;
+	const roomKey = await getRoomKey(roomId);
 
 	var pc = new RTCPeerConnection({
 		bundlePolicy				: "max-bundle",
 		rtcpMuxPolicy				: "require",
-		forceEncodedVideoInsertableStreams	: isCryptoEnabled
+        forceEncodedVideoInsertableStreams  : false
 	});
 	
 	//Create room url
@@ -215,21 +141,6 @@ async function connect(url,roomId,name,secret)
 	
 	pc.ontrack = (event) => {
 		//If encrypting/decrypting
-		if (isCryptoEnabled) 
-		{
-			//Create transfor strem fro decrypting
-			const transform = new TransformStream({
-				start() {},
-				flush() {},
-				transform: decrypt
-			});
-			//Get the receiver streams for track
-			let receiverStreams = event.receiver.createEncodedVideoStreams();
-			//Decrytp
-			receiverStreams.readableStream
-				.pipeThrough(transform)
-				.pipeTo(receiverStreams.writableStream);
-		}
 		addRemoteTrack(event);
 	};
 	
@@ -257,22 +168,22 @@ async function connect(url,roomId,name,secret)
 				{
 					//Add track
 					const sender = pc.addTrack(track,stream);
-					//If encrypting/decrypting
-					if (isCryptoEnabled) 
-					{
-						//Get insertable streams
-						const senderStreams = sender.createEncodedVideoStreams();
-						//Create transform stream for encryption
-						let senderTransformStream = new TransformStream({
-							start() {},
-							flush() {},
-							transform: encrypt
-						});
-						//Encrypt
-						senderStreams.readableStream
-						    .pipeThrough(senderTransformStream)
-						    .pipeTo(senderStreams.writableStream);
-					}
+					// //If encrypting/decrypting
+					// if (isCryptoEnabled) 
+					// {
+					// 	//Get insertable streams
+					// 	const senderStreams = sender.createEncodedVideoStreams();
+					// 	//Create transform stream for encryption
+					// 	let senderTransformStream = new TransformStream({
+					// 		start() {},
+					// 		flush() {},
+					// 		transform: encrypt
+					// 	});
+					// 	//Encrypt
+					// 	senderStreams.readableStream
+					// 	    .pipeThrough(senderTransformStream)
+					// 	    .pipeTo(senderStreams.writableStream);
+					// }
   				}
 			 }
 			
@@ -423,8 +334,8 @@ navigator.mediaDevices.getUserMedia({
 				}
 			});
 			//Upgrade
-			getmdlSelect.init('.getmdl-select');
-		        componentHandler.upgradeDom();
+			// getmdlSelect.init('.getmdl-select');
+		 //        componentHandler.upgradeDom();
 		})
 		.catch(function(error){
 			console.log(error);
@@ -461,29 +372,23 @@ navigator.mediaDevices.getUserMedia({
 	
 	var dialog = document.querySelector('dialog');
 	dialog.showModal();
-	if (!supportsInsertableStreams)
-		dialog.querySelector('#key').parentElement.innerHTML = "<red>Your browser does not support insertable streams<red>";
 	if (roomId)
 	{
-		dialog.querySelector('#roomId').parentElement.MaterialTextfield.change(roomId);
-		supportsInsertableStreams && dialog.querySelector('#key').parentElement.MaterialTextfield.change(key);
+		dialog.querySelector('#roomId').value = roomId;
 		dialog.querySelector('#name').focus();
 	}
 	dialog.querySelector('#random').addEventListener('click', function() {
 		dialog.querySelector('#roomId').parentElement.MaterialTextfield.change(Math.random().toString(36).substring(7));
 		dialog.querySelector('#name').parentElement.MaterialTextfield.change(Math.random().toString(36).substring(7));
-		dialog.querySelector('#key').parentElement.MaterialTextfield.change(Math.random().toString(36).substring(7));
 	});
 	dialog.querySelector('form').addEventListener('submit', function(event) {
 		dialog.close();
 		var a = document.querySelector(".room-info a");
 		a.target = "_blank";
 		a.href = "?roomId="+this.roomId.value;
-		if (this.key.value)
-			a.href += "&key="+encodeURI(this.key.value);
 		a.innerText = this.roomId.value;
 		a.parentElement.style.opacity = 1;
-		connect(url, this.roomId.value, this.name.value,this.key.value);
+		connect(url, this.roomId.value, this.name.value);
 		event.preventDefault();
 	});
 });

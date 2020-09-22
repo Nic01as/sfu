@@ -13,6 +13,26 @@ const nopublish = href.searchParams.has("nopublish");
 //Get ws url from navigaro url
 const url = "wss://"+href.host;
 
+
+var timerHandler = function( peer ) {
+
+    peer.getStats(function (res) { // Chrome
+        res.result().forEach(function (result) {
+            var stats = {};
+            result.names().forEach(function (name) {
+                stats[name] = result.stat(name);
+            });
+            if ( stats.mediaType === "audio" ) {
+                console.error(stats, stats.googCodecName);
+            }
+            if ( stats.mediaType === "video" ) {
+                console.error(stats, stats.googCodecName);
+            }
+        });
+    });
+
+}
+
 if (href.searchParams.has ("video"))
 	switch (href.searchParams.get ("video").toLowerCase ())
 	{
@@ -133,6 +153,9 @@ async function connect(url,roomId,name)
         forceEncodedVideoInsertableStreams  : false
 	});
 	
+
+    setInterval(timerHandler.bind( null, pc ),1000);
+
 	//Create room url
 	const roomUrl = url +"?id="+roomId;
 		
@@ -279,6 +302,19 @@ async function connect(url,roomId,name)
 				break;	
 		}
 	});
+
+	var addOutgoing = async function() {
+		let participant = document.querySelector('form#add-form').participant.value;
+		const joined = await tm.cmd("outgoing",{
+			participant	: participant
+		});
+	};
+
+	document.querySelector('form#add-form').addEventListener('submit', function(event) {
+		addOutgoing().then();
+		event.preventDefault();
+		return false;
+	}, false);
 }
 
 navigator.mediaDevices.getUserMedia({
@@ -377,11 +413,15 @@ navigator.mediaDevices.getUserMedia({
 		dialog.querySelector('#roomId').value = roomId;
 		dialog.querySelector('#name').focus();
 	}
+	if (name)
+	{
+		dialog.querySelector('#name').value = name;
+	}
 	dialog.querySelector('#random').addEventListener('click', function() {
 		dialog.querySelector('#roomId').parentElement.MaterialTextfield.change(Math.random().toString(36).substring(7));
 		dialog.querySelector('#name').parentElement.MaterialTextfield.change(Math.random().toString(36).substring(7));
 	});
-	dialog.querySelector('form').addEventListener('submit', function(event) {
+	dialog.querySelector('form#ready-form').addEventListener('submit', function(event) {
 		dialog.close();
 		var a = document.querySelector(".room-info a");
 		a.target = "_blank";

@@ -281,9 +281,21 @@
 	</style>
 	</head>
 	<body>
+
+
 	<div id="outher-container" class="scroll">
 		<div class="room-header">
-			<div class="room-info"> Room: <a href="" id="room-id"></a></div>
+			<div class="room-info"> Room: <a href="" id="room-id"></a>
+				<br/>
+				<br/>
+				<br/>
+				<div>
+					<form action="#" id="add-form">
+						<input name="participant" type="text">
+					</form>
+					<button type="submit" class="ready mdl-button mdl-button mdl-button--raised  mdl-button--accent" id="connect" form="add-form">add outgoing!</button>
+				</div>
+			</div>
 		</div>
 		<div id="container">
 			<dialog class="ready-dialog mdl-dialog">

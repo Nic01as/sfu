@@ -155,7 +155,7 @@ ws.on ('request', (request) => {
 					}));
 					
 					//Get all streams before adding us
-					const streams = room.getStreams();
+					// const streams = room.getStreams();
 					
 					//Init participant
 					const answer = participant.init(data.sdp);
@@ -183,10 +183,10 @@ ws.on ('request', (request) => {
 						room.off("participants",updateParticipants);
 					});
 					
-					//For each one
-					for (let stream of streams)
-						//Add it
-						participant.addStream(stream);
+					// //For each one
+					// for (let stream of streams)
+					// 	//Add it
+					// 	participant.addStream(stream);
 					
 				} catch (error) {
 					console.error(error);
@@ -196,6 +196,31 @@ ws.on ('request', (request) => {
 					});
 				}
 				break;
+
+			case "outgoing":
+				if (participant) {
+					for (let other of room.participants.values()) {
+						console.log(other.name, other.id, data.participant);
+						//Check it is not the event source
+						if (other.name === data.participant) {
+							console.log("found " + data.participant);
+
+							//Add stream to participant
+							let incomingStream = other.getIncomingStreams().next().value;
+							console.log("found " + incomingStream);
+
+							participant.addStream(incomingStream);
+
+							//Get video tracks
+							const videoTracks = incomingStream.getVideoTracks();
+							//For each video track
+							for (let i=0; i<videoTracks.length; ++i)
+								//Request an iframe so playback can start even if no other participant has subscribed
+								videoTracks[i].refresh();
+						}
+					}
+				}
+
 		}
 	});
 

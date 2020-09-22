@@ -7,7 +7,7 @@ const SDPInfo		= SemanticSDP.SDPInfo;
 const PORT = 8084;
 
 //HTTP&WS stuff
-const https = require ('https');
+const http = require ('http');
 const url = require ('url');
 const fs = require ('fs');
 const path = require ('path');
@@ -33,8 +33,8 @@ const rooms = new Map();
 const base = 'www';
 
 const options = {
-	key: fs.readFileSync ('server.key'),
-	cert: fs.readFileSync ('server.cert')
+	// key: fs.readFileSync ('server.key'),
+	// cert: fs.readFileSync ('server.cert')
 };
 
 // maps file extention to MIME typere
@@ -55,7 +55,7 @@ const map = {
 
 
 //Create HTTP server
-const server = https.createServer (options, (req, res) => {
+const server = http.createServer (options, (req, res) => {
 	// parse URL
 	const parsedUrl = url.parse (req.url);
 	// extract URL path

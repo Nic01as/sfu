@@ -24,9 +24,23 @@ var timerHandler = function( peer ) {
             });
             if ( stats.mediaType === "audio" ) {
                 console.error(stats, stats.googCodecName);
+
+				let div = document.querySelector("div[id='"+stats.googTrackId+"']");
+
+				if(div) {
+					div.innerHTML = stats.googCodecName;
+				}
+
             }
             if ( stats.mediaType === "video" ) {
                 console.error(stats, stats.googCodecName);
+
+				let div = document.querySelector("div[id='"+stats.googTrackId+"']");
+
+				if(div) {
+					div.innerHTML = stats.googCodecName;
+				}
+
             }
         });
     });
@@ -83,39 +97,59 @@ function addRemoteTrack(event)
 		return console.log("addRemoteTrack() no stream")
 	
 	//Check if video is already present
-	let video = container.querySelector("video[id='"+stream.id+"']");
-	
+	let div = container.querySelector("div[id='"+stream.id+"']");
+	let divtracks;
+
+	let divtrack = document.createElement("div");
+	divtrack.id = track.id;
+	divtrack.innerHTML = track.id;
+
+
 	//Check if already present
-	if (video)
+	if (div) {
+		divtracks = div.querySelector("div[class='tracks']");
+		divtracks.appendChild(divtrack);
 		//Ignore
 		return console.log("addRemoteTrack() video already present for "+stream.id);
+	}
 	
 	//Listen for end event
 	track.onended=(event)=>{
 		console.log(event);
 	
 		//Check if video is already present
-		let video = container.querySelector("video[id='"+stream.id+"']");
+		let div = container.querySelector("div[id='"+stream.id+"']");
 
 		//Check if already present
-		if (!video)
+		if (!div)
 			//Ignore
 			return console.log("removeRemoteTrack() video not present for "+stream.id);
 
-		container.removeChild(video);
+		container.removeChild(div);
 	}
-	
+	div = document.createElement("div");
+	div.id = stream.id;
+
+	divtracks = document.createElement("div");
+	divtracks.className = "tracks";
+
+	divtracks.appendChild(divtrack);
+
+
 	//Create new video element
-	video = document.createElement("video");
+	var video = document.createElement("video");
 	//Set same id
-	video.id = stream.id;
 	//Set src stream
+	video.controls = "controls";
 	video.srcObject = stream;
 	//Set other properties
 	video.autoplay = true;
 	video.play();
 	//Append it
-	container.appendChild(video);
+	div.appendChild(video);
+	div.appendChild(divtracks);
+
+	container.appendChild(div);
 }
 	
 function addLocalVideoForStream(stream,muted)
